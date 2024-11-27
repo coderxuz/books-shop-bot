@@ -1,0 +1,40 @@
+{
+  "en": {
+    "welcome": "Welcome to the bot",
+    "please_login": "Please /login or /sign \n /lang to change language",
+    "provide_fullname": "Please provide your full name \n example:Jabbarbergenov Bekbolat Qayratovich",
+    "provide_number": "Please enter your number",
+    "provide_role": "Please choose your role",
+    "seller":"seller",
+    "user":"user",
+    "provide_login":"Please enter your login \n(only latin letters and numbers)",
+    "share_number":"Share number",
+    "provide_password":"Please enter password \n (only latin alphabets and numbers)"
+
+  },
+  "uz": {
+    "welcome": "Botga xush kelibsiz!",
+    "please_login": "Iltimos , /login yoki /sign qiling. \n tilni o'zgartirish uchun /lang",
+    "provide_fullname": "Iltimos, toʻliq ismingizni kiriting \n misol:Jabbarbergenov Bekbolat Qayratovich",
+    "provide_number": "Iltimos, raqamingizni kiriting",
+    "provide_role": "Rolingizni tanlang",
+    "seller":"sotuvchi",
+    "user":"foydalanuvchi",
+    "provide_login":"Iltimos, loginingizni \n (faqat lotin harflari va raqamlari)",
+    "share_number":"Raqamni ulashish",
+    "provide_password":"Iltimos, parolni kiriting \n (faqat lotin harflari va raqamlari)"
+
+  },
+  "ru": {
+    "welcome": "Добро пожаловать в бот",
+    "please_login": "Пожалуйста, /login или /sign. \n /lang для смены языка",
+    "provide_fullname": "Пожалуйста, укажите ваше полное \n имя пример: Джаббарбергенов Бекболат Кайратович",
+    "provide_number": "Пожалуйста, введите ваш номер",
+    "provide_role": "Пожалуйста, выберите свою роль", 
+    "seller":"продавец",
+    "user":"пользователь",
+    "provide_login":"Пожалуйста, введите ваш логин \n  (только латинские буквы и цифры)",
+    "share_number":"Поделитесь вашим номером",
+    "provide_password":"Пожалуйста, введите пароль \n  (только латинские буквы и цифры)"
+  }
+}
