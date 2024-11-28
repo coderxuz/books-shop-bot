@@ -13,7 +13,7 @@ from aiogram.types import (
     ReplyKeyboardMarkup,
     KeyboardButton,
     ReplyKeyboardRemove,
-    ContentType
+    ContentType,
 )
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -37,8 +37,43 @@ def check_user_exist(user_id: int) -> bool:
     data = response.json()
     if response.status_code != 200:
         return False
-    print(response.json())
     return data.get("exist")
+
+
+async def check_login(login: str) -> bool:
+    response = requests.get(f"{API_URL}/auth/login-exist?login={login}")
+    data = response.json()
+    if response.status_code != 200:
+        return False
+    return data.get("exist")
+
+
+async def check_number(number: int) -> bool:
+    response = requests.get(f"{API_URL}/auth/phone-exist?number={number}")
+    data = response.json()
+    if response.status_code != 200:
+        return False
+    return data.get("exist")
+
+
+async def request_sign(data) -> dict[str, str]:
+    try:
+        print(data)
+        response = requests.post(f"{API_URL}/auth/sign-up", json=data)
+        if response.status_code == 400:
+            return 400
+        elif response.status_code == 500:
+            return 500
+        elif response.status_code == 201:
+            return 201
+        else:
+            print(response.status_code)
+            print(response.json())
+            return 500
+        result = response.json()
+        return result
+    except Exception as e:
+        return 500
 
 
 with open("translations.json", "r", encoding="utf-8") as file:
@@ -70,6 +105,16 @@ class UserSettings(StatesGroup):
 reply_keyboards = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text="btn1")], [KeyboardButton(text="btn2")]]
 )
+def main_menu():
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🔍 Search"), KeyboardButton(text="📋 Profile")],
+            [KeyboardButton(text="ℹ️ Help"), KeyboardButton(text="⚙️ Settings")]
+        ],
+        resize_keyboard=True,  # Adjust the size
+        one_time_keyboard=False
+    )
+    return keyboard
 
 
 async def get_use_lang(message: Message, user_data):
@@ -149,26 +194,41 @@ async def proccess_fio(message: Message, state: FSMContext):
         return await message.answer(get_translations(lang_code, "provide_fullname"))
     await state.update_data(fio=message.text)
     await state.set_state(SignForm.phone)
-    await message.answer(get_translations(lang_code, "provide_number"), reply_markup=ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text=get_translations(lang_code, "share_number"), request_contact=True)],
-            
-        ],
-        resize_keyboard=True,
-        one_time_keyboard=True
-    ))
+    await message.answer(
+        get_translations(lang_code, "provide_number"),
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(
+                        text=get_translations(lang_code, "share_number"),
+                        request_contact=True,
+                    )
+                ],
+            ],
+            resize_keyboard=True,
+            one_time_keyboard=True,
+        ),
+    )
 
-@dp.message(SignForm.phone,F.content_type == ContentType.CONTACT)
-async def process_contact(message:Message, state:FSMContext):
+
+@dp.message(SignForm.phone)
+async def process_contact(message: Message, state: FSMContext):
     if not message.contact:
-        return await message.answer("No contact was shared. Please share your contact.")
+        return await message.answer("Please press button and share your number.")
     phone_number = message.contact.phone_number
+    if message.from_user.id != message.contact.user_id:
+        return await message.answer("This is not your number")
+    if await check_number(phone_number):
+        await message.answer("This number registered in our app \n you have to delete your account we've send sms code \n please review our rules in /help")
+        await state.clear()
+        return await message.answer("Returning to main manu", reply_markup=main_menu())
+        
     user_data = await state.get_data()
     logging.info(f"{user_data} , 'in contact' ")
     lang_code = await get_use_lang(message, user_data)
-    
+
     await state.update_data(phone=phone_number)
-    
+
     await state.set_state(SignForm.role)
     await message.answer(
         get_translations(lang_code, "provide_role"),
@@ -180,7 +240,7 @@ async def process_contact(message:Message, state:FSMContext):
                 ]
             ],
             resize_keyboard=True,
-            one_time_keyboard=True
+            one_time_keyboard=True,
         ),
     )
 
@@ -199,21 +259,56 @@ async def proccess_role(message: Message, state: FSMContext):
         await state.update_data(role="seller")
     elif message.text == get_translations(lang_code, "user"):
         await state.update_data(role="user")
-    await message.answer(
-        get_translations(lang_code, "provide_login")
-    )
+    await message.answer(get_translations(lang_code, "provide_login"), reply_markup=ReplyKeyboardRemove())
     await state.set_state(SignForm.login)
 
+
 @dp.message(SignForm.login)
-async def proccess_login(message:Message, state:FSMContext):
+async def proccess_login(message: Message, state: FSMContext):
     user_data = await state.get_data()
     lang_code = await get_use_lang(message, user_data)
     regex_for_latin_number = "^[a-zA-Z]+$"
     if not message.text or not re.match(regex_for_latin_number, message.text):
         return await message.answer(get_translations(lang_code, "provide_login"))
-    await state.update_data(login = message.text)
-    await message(get_translations(lang_code, "provide_password"))
+    if await check_login(message.text):
+        return await message.answer("This login used by another user pls write a different login",)
+    await state.update_data(login=message.text)
+    await message.answer(get_translations(lang_code, "provide_password"))
     await state.set_state(SignForm.password)
+
+
+@dp.message(SignForm.password)
+async def process_password(message: Message, state: FSMContext):
+    user_data = await state.get_data()
+    lang_code = await get_use_lang(message, user_data)
+    regex_for_pass = "^[a-zA-Z]+$"
+    if not message.text or not re.match(regex_for_pass, message.text):
+        return await message.answer(get_translations(lang_code, "provide_password"))
+    print(user_data)
+    fio = user_data.get("fio")
+    phone = user_data.get("phone")
+    role = user_data.get("role")
+    login = user_data.get("login")
+    password = message.text
+    if not all([fio, phone, role, login, password]):
+        await message.answer(get_translations(lang_code, "incorrect_info"))
+        await message.answer("/start")
+    user_dict = {
+        "fio": fio,
+        "phone": phone,
+        "role": role,
+        "login": login,
+        "telegram_id": message.from_user.id,
+        "password": message.text,
+    }
+    print(user_dict)
+    response = await request_sign(user_dict)
+    if response == 500:
+        await message.answer(get_translations(lang_code, "server_error"))
+    elif response == 400:
+        await message.answer(get_translations(lang_code, "user_error"))
+    elif response == 201:
+        await message.answer(get_translations(lang_code, "successfully_created"))
 
 
 async def main():
